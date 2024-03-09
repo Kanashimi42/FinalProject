@@ -2,6 +2,8 @@
 #include <windows.h>
 #include <string>
 #include <fstream>
+#include <thread>
+
 #include <Commctrl.h>
 #define MAX_LOADSTRING 100
 
@@ -33,7 +35,7 @@ BOOL CCensurDlg::DlgProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			ptr->StartSearch(hWnd);
 			break;
 		case IDC_BUTTON7:
-			ptr->StartSearch(hWnd);
+			ptr->StopSearch();
 			break;
 		}
 	}
@@ -56,13 +58,20 @@ void CCensurDlg::Cls_OnClose(HWND hwnd)
 BOOL CCensurDlg::Cls_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 {
 	LoadFilesList("Files", hwnd);
-	LoadCensorWordsList("Censur list", hwnd);
-	HWND hProgressBar = GetDlgItem(hwnd, IDC_PROGRESS1);
-	SendMessage(hProgressBar, PBM_SETRANGE32, 0, MAKELPARAM(0, maxProgressValue));
-	SendMessage(hProgressBar, PBM_SETSTEP, 1, 0);
+	LoadCensorWordsList("Censor list", hwnd);
 
-	return 0;
+	HWND hProgressBar = GetDlgItem(hwnd, IDC_PROGRESS1);
+	if (hProgressBar)
+	{
+		maxProgressValue = 100;
+		currentProgressValue = 0;
+		SendMessage(hProgressBar, PBM_SETRANGE32, 0, MAKELPARAM(0, maxProgressValue));
+		SendMessage(hProgressBar, PBM_SETSTEP, 1, 0);
+	}
+
+	return TRUE;
 }
+
 
 void CCensurDlg::Cls_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 {
@@ -79,22 +88,19 @@ void CCensurDlg::Cls_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 
 void CCensurDlg::StartSearch(HWND hWnd)
 {
-	string filesDir = "Files"; 
-	string censorDir = "Censor list"; 
+	stopScan = false;
+
+	string filesDir = "Files";
+	string censorDir = "Censor list";
 
 	SendMessage(GetDlgItem(hWnd, IDC_LIST1), LB_RESETCONTENT, 0, 0);
 	SendMessage(GetDlgItem(hWnd, IDC_LIST2), LB_RESETCONTENT, 0, 0);
-	LoadFilesList(filesDir, hWnd);
 	LoadCensorWordsList(censorDir, hWnd);
-	ScanFilesAndReplace(filesDir, censorDir);
-}
-void CCensurDlg::LoadFilesList(const string& filesDir, HWND hWnd)
-{
+	InvalidateRect(GetDlgItem(hWnd, IDC_LIST2), NULL, TRUE);
+	UpdateWindow(GetDlgItem(hWnd, IDC_LIST2));
 	WIN32_FIND_DATAW FindFileData;
 	HANDLE hFind;
-
 	wstring searchPath = wstring(filesDir.begin(), filesDir.end()) + L"\\*.*";
-
 	hFind = FindFirstFileW(searchPath.c_str(), &FindFileData);
 
 	if (hFind != INVALID_HANDLE_VALUE)
@@ -103,16 +109,18 @@ void CCensurDlg::LoadFilesList(const string& filesDir, HWND hWnd)
 		{
 			if (!(FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 			{
-				SendMessageW(GetDlgItem(hWnd, IDC_LIST1), LB_ADDSTRING, 0, reinterpret_cast<LPARAM>(FindFileData.cFileName));
+				string filename(FindFileData.cFileName, FindFileData.cFileName + wcslen(FindFileData.cFileName));
+				ScanFilesAndReplace(filesDir + "\\" + filename, censorDir, hWnd);
 			}
 		} while (FindNextFileW(hFind, &FindFileData));
 		FindClose(hFind);
 	}
 }
 
+
 void CCensurDlg::LoadCensorWordsList(const string& censorDir, HWND hWnd)
 {
-	string censorFile = censorDir + "\\Censur.txt";
+	string censorFile = "C:\\Users\\Kanashimi\\source\\repos\\Project29\\Project29\\Censor list\\Censor.txt";
 	ifstream file(censorFile);
 	string word;
 
@@ -126,23 +134,12 @@ void CCensurDlg::LoadCensorWordsList(const string& censorDir, HWND hWnd)
 	}
 }
 
-void CCensurDlg::StopSearch()
+void CCensurDlg::LoadFilesList(const string& filesDir, HWND hWnd)
 {
-	stopScan = true;
-}
-
-
-void CCensurDlg::ScanFilesAndReplace(const string& filesDir, const string& censorDir)
-{
-	stopScan = false;
-
-	WIN32_FIND_DATAW FindFileData;
+	WIN32_FIND_DATAA FindFileData;
 	HANDLE hFind;
-
-	wstring searchPath(filesDir.begin(), filesDir.end());
-	searchPath += L"\\*.*";
-
-	hFind = FindFirstFileW(searchPath.c_str(), &FindFileData);
+	string searchPath = filesDir + "\\*.*";
+	hFind = FindFirstFileA(searchPath.c_str(), &FindFileData);
 
 	if (hFind != INVALID_HANDLE_VALUE)
 	{
@@ -150,34 +147,108 @@ void CCensurDlg::ScanFilesAndReplace(const string& filesDir, const string& censo
 		{
 			if (!(FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
 			{
-				int requiredSize = WideCharToMultiByte(CP_UTF8, 0, FindFileData.cFileName, -1, NULL, 0, NULL, NULL);
-				if (requiredSize > 0)
-				{
-					string filePath(requiredSize - 1, 0);
-					WideCharToMultiByte(CP_UTF8, 0, FindFileData.cFileName, -1, &filePath[0], requiredSize, NULL, NULL);
-					filePath = filesDir + "\\" + filePath;
-					if (!stopScan)
-						ScanFileForCensorWords(filePath, censorDir);
-				}
+				SendMessageA(GetDlgItem(hWnd, IDC_LIST1), LB_ADDSTRING, 0, (LPARAM)FindFileData.cFileName);
 			}
-		} while (FindNextFileW(hFind, &FindFileData));
+		} while (FindNextFileA(hFind, &FindFileData));
 		FindClose(hFind);
+	}
+}
+
+
+void CCensurDlg::StopSearch()
+{
+	stopScan = true;
+	MessageBox(NULL, L"Поиск остановлен", L"Сообщение", MB_OK);
+}
+
+
+
+void CCensurDlg::ScanFilesAndReplace(const string& filePath, const string& censorDir, HWND hwnd)
+{
+	HWND hProgressBar = GetDlgItem(hwnd, IDC_PROGRESS1);
+	if (!hProgressBar)
+	{
+		return;
+	}
+	string censorDird = "C:\\Users\\Kanashimi\\source\\repos\\Project29\\Project29\\Censor list\\Censor.txt";
+	ifstream file(filePath);
+	if (!file.is_open())
+	{
+		MessageBox(NULL, L"Не удалось открыть файл", L"Ошибка", MB_OK);
+		return;
+	}
+
+	string line;
+	ofstream outFile(filePath + ".tmp");
+
+	while (!stopScan && getline(file, line))
+	{
+		ifstream censorFile(censorDird);
+		if (!censorFile.is_open())
+		{
+			MessageBox(NULL, L"Не удалось открыть файл цензуры", L"Ошибка", MB_OK);
+			return;
+		}
+
+		string censorWord;
+		while (censorFile >> censorWord)
+		{
+			size_t pos = line.find(censorWord);
+			while (pos != string::npos)
+			{
+				line.replace(pos, censorWord.length(), "***");
+				pos = line.find(censorWord, pos + 3);
+			}
+		}
+		censorFile.close();
+
+		outFile << line << endl;
+
+		for (int i = 0; i < 3; ++i)
+		{
+			if (stopScan)
+			{
+				break;
+			}
+			std::this_thread::sleep_for(std::chrono::milliseconds(333));
+			SendMessage(hProgressBar, PBM_STEPIT, 0, 0);
+		}
+	}
+
+	file.close();
+	outFile.close();
+
+	if (remove(filePath.c_str()) != 0)
+	{
+		MessageBox(NULL, L"Не удалось удалить исходный файл", L"Ошибка", MB_OK);
+	}
+	else if (rename((filePath + ".tmp").c_str(), filePath.c_str()) != 0)
+	{
+		MessageBox(NULL, L"Не удалось переименовать временный файл", L"Ошибка", MB_OK);
 	}
 }
 
 
 void CCensurDlg::ScanFileForCensorWords(const string& filePath, const string& censorDir, HWND hwnd)
 {
+	HWND hProgressBar = GetDlgItem(hwnd, IDC_PROGRESS1);
+	if (!hProgressBar)
+	{
+		return;
+	}
+
 	ifstream file(filePath);
 	string line;
 
 	if (file.is_open())
 	{
+		ofstream outFile(filePath + ".tmp");
+
 		while (!stopScan && getline(file, line))
 		{
-			maxProgressValue = ;
+			maxProgressValue = 100;
 			currentProgressValue = 0;
-			SendMessage(GetDlgItem(hWnd, IDC_PROGRESS1), PBM_SETPOS, 0, 0); 
+			SendMessage(GetDlgItem(hwnd, IDC_PROGRESS1), PBM_SETPOS, 0, 0);
 
 			ifstream censorFile(censorDir);
 			string censorWord;
@@ -190,24 +261,34 @@ void CCensurDlg::ScanFileForCensorWords(const string& filePath, const string& ce
 					while (pos != string::npos)
 					{
 						line.replace(pos, censorWord.length(), "***");
-						pos = line.find(censorWord, pos + 3); 
+						pos = line.find(censorWord, pos + 3);
 						currentProgressValue++;
 						SendMessage(hProgressBar, PBM_SETPOS, currentProgressValue, 0);
-
 					}
 				}
 				censorFile.close();
 			}
 			else
 			{
-			
 			}
-			
+
+			outFile << line << endl;
 		}
+
 		file.close();
+		outFile.close();
+
+		if (remove(filePath.c_str()) != 0)
+		{
+		}
+		else if (rename((filePath + ".tmp").c_str(), filePath.c_str()) != 0)
+		{
+		}
 	}
 	else
 	{
 		
 	}
 }
+
+
