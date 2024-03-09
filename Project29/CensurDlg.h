@@ -3,7 +3,6 @@
 
 class CCensurDlg
 {
-	
 public:
 	CCensurDlg(void);
 	~CCensurDlg(void);
@@ -13,7 +12,7 @@ public:
 	HWND hProgressBar;
 	int maxProgressValue;
 	int currentProgressValue;
-
+	function<void(int)> onProgressUpdate;
 	void Cls_OnClose(HWND hwnd);
 	BOOL Cls_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam);
 	void LoadCensorWordsList(const string& censorDir, HWND hWnd);
