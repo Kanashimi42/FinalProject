@@ -14,7 +14,6 @@ public:
 	int maxProgressValue;
 	int currentProgressValue;
 
-
 	void Cls_OnClose(HWND hwnd);
 	BOOL Cls_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam);
 	void LoadCensorWordsList(const string& censorDir, HWND hWnd);

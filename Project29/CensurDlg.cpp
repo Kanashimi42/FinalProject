@@ -209,11 +209,11 @@ void CCensurDlg::ScanFilesAndReplace(const string& filePath, const string& censo
 			if (stopScan)
 			{
 				break;
-			}
+	}
 			std::this_thread::sleep_for(std::chrono::milliseconds(333));
 			SendMessage(hProgressBar, PBM_STEPIT, 0, 0);
 		}
-	}
+}
 
 	file.close();
 	outFile.close();
