@@ -141,10 +141,67 @@ void CCensurDlg::DeleteSelectedCensorWord(HWND hWnd)
 	int selectedIndex = SendMessage(hListBox2, LB_GETCURSEL, 0, 0);
 	if (selectedIndex != LB_ERR)
 	{
-		// Удалить выбранный элемент из списка
-		SendMessage(hListBox2, LB_DELETESTRING, selectedIndex, 0);
+		// Получить длину текста выбранного элемента
+		int textLength = SendMessage(hListBox2, LB_GETTEXTLEN, selectedIndex, 0);
+
+		// Выделить память для текста выбранного элемента
+		wchar_t* buffer = new wchar_t[textLength + 1];
+
+		// Получить текст выбранного элемента
+		SendMessage(hListBox2, LB_GETTEXT, selectedIndex, (LPARAM)buffer);
+		buffer[textLength] = '\0'; // Добавить нулевой символ в конец строки
+		MessageBoxW(hWnd, buffer, L"Выбранный элемент", MB_OK | MB_ICONINFORMATION);
+
+		// Получить путь к временному файлу
+		std::string tempFilePath = CENSOR_FILE + ".tmp";
+
+		// Открыть оригинальный файл с запрещенными словами для чтения
+		std::wifstream inFile(CENSOR_FILE);
+
+		// Открыть временный файл для записи
+		std::wofstream outFile(tempFilePath);
+
+		// Переменная для хранения текущего слова из файла
+		std::wstring word;
+
+		// Копировать все слова из оригинального файла в временный файл, кроме выбранного
+		while (inFile >> word)
+		{
+			// Если текущее слово не совпадает с выбранным, записать его во временный файл
+			if (word != buffer)
+			{
+				outFile << word << std::endl;
+			}
+		}
+
+		// Закрыть файлы
+		inFile.close();
+		outFile.close();
+
+		// Удалить оригинальный файл
+		if (remove(CENSOR_FILE.c_str()) != 0)
+		{
+			MessageBox(hWnd, L"Ошибка удаления оригинального файла.", L"Ошибка", MB_OK | MB_ICONERROR);
+			return;
+		}
+
+		// Переименовать временный файл в оригинальный
+		if (rename(tempFilePath.c_str(), CENSOR_FILE.c_str()) != 0)
+		{
+			MessageBox(hWnd, L"Ошибка переименования временного файла.", L"Ошибка", MB_OK | MB_ICONERROR);
+			return;
+		}
+
+		// Освободить память для текста выбранного элемента
+		delete[] buffer;
+
+		// Обновить список слов в листбоксе
+		LoadCensorWordsList(CENSOR_FILE, hWnd);
 	}
 }
+
+
+
 void CCensurDlg::ScanAllFilesAndReplace(HWND hWnd)
 {
 	string filesDir = FILES_DIRECTORY;
@@ -263,15 +320,22 @@ void CCensurDlg::LoadCensorWordsList(const string& censorDir, HWND hWnd)
 	ifstream file(censorFile);
 	string word;
 
+	// Получить дескриптор списка IDC_LIST2
+	HWND hListBox2 = GetDlgItem(hWnd, IDC_LIST2);
+
+	// Очистить список
+	SendMessage(hListBox2, LB_RESETCONTENT, 0, 0);
+
 	if (file.is_open())
 	{
 		while (file >> word)
 		{
-			SendMessageA(GetDlgItem(hWnd, IDC_LIST2), LB_ADDSTRING, 0, (LPARAM)word.c_str());
+			SendMessageA(hListBox2, LB_ADDSTRING, 0, (LPARAM)word.c_str());
 		}
 		file.close();
 	}
 }
+
 
 void CCensurDlg::LoadFilesList(const string& filesDir, HWND hWnd)
 {
@@ -461,8 +525,3 @@ void CCensurDlg::ScanFileForCensorWords(const string& filePath, const string& ce
 		});
 	scanThread.detach();
 }
-
-
-
-
-
