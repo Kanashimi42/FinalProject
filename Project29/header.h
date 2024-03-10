@@ -2,6 +2,8 @@
 #include <functional>
 
 #include<windows.h>
+#include <Shlobj.h>
+
 #include <windowsX.h>
 #include <tchar.h>
 #include <string>

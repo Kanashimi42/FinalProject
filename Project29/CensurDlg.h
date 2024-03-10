@@ -17,7 +17,10 @@ public:
 	BOOL Cls_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam);
 	void LoadCensorWordsList(const string& censorDir, HWND hWnd);
 	void LoadFilesList(const string& filesDir, HWND hWnd);
-	void Cls_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify);
+	void ScanAllFilesAndReplace(HWND hWnd);
+	void FindFilesInDirectory(const string& directory, vector<string>& fileList);
+	void ChangeSearchDirectory(HWND hWnd);
+	/*void Cls_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify);*/
 	void StartSearch(HWND hWnd);
 	void StopSearch();
 	void ScanFilesAndReplace(const string& filesDir, const string& censorDir, HWND hwnd);
