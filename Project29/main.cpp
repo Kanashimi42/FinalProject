@@ -1,6 +1,6 @@
 #include "CensurDlg.h"
-
-
+#include "EditDlg.h"
+#include "ReportDlg.h"
 int WINAPI _tWinMain(HINSTANCE hInst, HINSTANCE hPrev, LPTSTR lpszCmdLine, int nCmdShow)
 {
 	CCensurDlg dlg;

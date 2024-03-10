@@ -12,7 +12,10 @@ public:
 	HWND hProgressBar;
 	int maxProgressValue;
 	void ChangeCensorFile(HWND hWnd);
+	void EditSelectedCensorWord(HWND hWnd, HWND hEditDlg);
+	
 	int currentProgressValue;
+	void UpdateCensorFile(const wchar_t* newWord);
 	function<void(int)> onProgressUpdate;
 	void Cls_OnClose(HWND hwnd);
 	BOOL Cls_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam);

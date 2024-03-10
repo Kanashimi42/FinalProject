@@ -130,7 +130,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="CensurDlg.h" />
+    <ClInclude Include="EditDlg.h" />
     <ClInclude Include="header.h" />
+    <ClInclude Include="ReportDlg.h" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
@@ -138,7 +140,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CensurDlg.cpp" />
+    <ClCompile Include="EditDlg.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="ReportDlg.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

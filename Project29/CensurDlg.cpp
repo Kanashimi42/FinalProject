@@ -3,22 +3,24 @@
 #include <string>
 #include <fstream>
 #include <thread>
-
+#include "EditDlg.h"
+#include "ReportDlg.h"
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <algorithm>
-
+HWND hEditDlg = NULL;
 #undef MAX_PATH
 #define MAX_PATH 512
 #include <Commctrl.h>
 #define MAX_LOADSTRING 100
 CCensurDlg* CCensurDlg::ptr = NULL;
 bool CCensurDlg::stopScan = false;
+std::vector<std::pair<std::string, int>> wordCount;
 
 std::string FILES_DIRECTORY = "C:\\Users\\Kanashimi\\source\\repos\\Project29\\Project29\\Files\\";
 
-
+wchar_t* newWordSuper;
 std::string CENSOR_FILE = "C:\\Users\\Kanashimi\\source\\repos\\Project29\\Project29\\Censor list\\Censor.txt";
 
 
@@ -38,11 +40,18 @@ BOOL CCensurDlg::DlgProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_INITDIALOG:
 		return ptr->Cls_OnInitDialog(hWnd, (HWND)wParam, lParam);
+
 	case WM_COMMAND:
 	{
 		int wmId = LOWORD(wParam);
 		switch (wmId)
 		{
+		case IDC_BUTTON2:
+			DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG3), hWnd, (DLGPROC)EditDlg::DlgProc);
+			hEditDlg = CreateDialog(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG3), hWnd, (DLGPROC)EditDlg::DlgProc);
+			ptr->EditSelectedCensorWord(hWnd, hEditDlg);
+			return TRUE;
+			break;
 		case IDC_BUTTON3:
 			ptr->DeleteSelectedCensorWord(hWnd);
 			break;
@@ -58,6 +67,11 @@ BOOL CCensurDlg::DlgProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case IDC_BUTTON7:
 			ptr->StopSearch();
 			break;
+		case IDC_BUTTON8:
+			DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG2), hWnd, (DLGPROC)ReportDlg::DlgProc);
+			hEditDlg = CreateDialog(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG2), hWnd, (DLGPROC)ReportDlg::DlgProc);
+			return TRUE;
+			break;
 		case IDC_BUTTON9:
 			int result = MessageBox(hWnd, L"Вы точно хотите сканировать и изменить все файлы?", L"Подтверждение", MB_YESNO | MB_ICONQUESTION);
 			if (result == IDYES) {
@@ -65,6 +79,18 @@ BOOL CCensurDlg::DlgProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 			}
 			break;
 		}
+	}
+	break;
+
+	case WM_APP: // Добавляем обработку сообщения WM_APP
+	{
+		LPCTSTR newWord = reinterpret_cast<LPCTSTR>(wParam);
+		// Ваш код для обработки нового слова
+		// Например, вы можете его отобразить в вашем диалоговом окне
+		// Например, если у вас есть элемент управления для отображения текста:
+		MessageBox(hWnd, newWord, L"Ошибка", MB_OK | MB_ICONERROR);
+		newWordSuper = _tcsdup(newWord);
+		return TRUE;
 	}
 	break;
 
@@ -130,6 +156,92 @@ void CCensurDlg::StartSearch(HWND hWnd)
 	}
 }
 
+
+void CCensurDlg::EditSelectedCensorWord(HWND hWnd, HWND hEditDlg)
+{
+	// Получить дескриптор списка IDC_LIST2
+	HWND hListBox2 = GetDlgItem(hWnd, IDC_LIST2);
+
+	// Получить индекс выбранного элемента в списке
+	int selectedIndex = SendMessage(hListBox2, LB_GETCURSEL, 0, 0);
+	if (selectedIndex != LB_ERR)
+	{
+		// Получить длину текста выбранного элемента
+		int textLength = SendMessage(hListBox2, LB_GETTEXTLEN, selectedIndex, 0);
+
+		// Выделить память для текста выбранного элемента
+		wchar_t* buffer = new wchar_t[textLength + 1];
+
+		// Получить текст выбранного элемента
+		SendMessage(hListBox2, LB_GETTEXT, selectedIndex, (LPARAM)buffer);
+		buffer[textLength] = L'\0'; // Добавить нулевой символ в конец строки
+
+		// Передать выбранное слово в IDC_EDIT1 в окне EditDlg
+		HWND hEdit1 = GetDlgItem(hEditDlg, IDC_EDIT1);
+		SetWindowText(hEdit1, buffer);
+		int newWordLength = GetWindowTextLength(hEdit1);
+		wchar_t* newWord = new wchar_t[newWordLength + 1];
+		GetWindowText(hEdit1, newWord, newWordLength + 1);
+
+		// Получить путь к временному файлу
+		std::string tempFilePath = CENSOR_FILE + ".tmp";
+
+		// Открыть оригинальный файл с запрещенными словами для чтения
+		std::wifstream inFile(CENSOR_FILE);
+		if (!inFile.is_open())
+		{
+			MessageBox(hWnd, L"Ошибка открытия оригинального файла.", L"Ошибка", MB_OK | MB_ICONERROR);
+			return;
+		}
+
+		// Открыть временный файл для записи
+		std::wofstream outFile(tempFilePath);
+		if (!outFile.is_open())
+		{
+			MessageBox(hWnd, L"Ошибка открытия временного файла.", L"Ошибка", MB_OK | MB_ICONERROR);
+			inFile.close();
+			return;
+		}
+
+		// Переменная для хранения текущего слова из файла
+		std::wstring word;
+
+		// Копировать все слова из оригинального файла в временный файл, заменяя выбранное слово на новое
+		while (inFile >> word)
+		{
+			if (word == buffer)
+			{
+				word = newWordSuper;
+			}
+			outFile << word << std::endl;
+		}
+
+		// Закрыть файлы
+		inFile.close();
+		outFile.close();
+
+		// Удалить оригинальный файл
+		if (remove(CENSOR_FILE.c_str()) != 0)
+		{
+			MessageBox(hWnd, L"Ошибка удаления оригинального файла.", L"Ошибка", MB_OK | MB_ICONERROR);
+			return;
+		}
+
+		// Переименовать временный файл в оригинальный
+		if (rename(tempFilePath.c_str(), CENSOR_FILE.c_str()) != 0)
+		{
+			MessageBox(hWnd, L"Ошибка переименования временного файла.", L"Ошибка", MB_OK | MB_ICONERROR);
+			return;
+		}
+
+		// Освободить память для текста выбранного элемента
+		delete[] buffer;
+		delete[] newWord;
+
+		// Обновить список слов в листбоксе
+		LoadCensorWordsList(CENSOR_FILE, hWnd);
+	}
+}
 
 
 void CCensurDlg::DeleteSelectedCensorWord(HWND hWnd)
@@ -211,11 +323,16 @@ void CCensurDlg::ScanAllFilesAndReplace(HWND hWnd)
 	vector<string> fileList;
 	FindFilesInDirectory(filesDir, fileList);
 
+	// Очистить счетчик слов перед началом сканирования всех файлов
+	wordCount.clear();
+
 	// Пройти по всем файлам и выполнить сканирование и изменение
 	for (const auto& file : fileList) {
-		ScanFilesAndReplace(file, censorDir, hWnd);
+		// Сканировать и заменять в файле, а также обновить счетчик слов
+		ScanFilesAndReplaceAndUpdateCounter(file, censorDir, hWnd);
 	}
 }
+
 
 void CCensurDlg::ChangeCensorFile(HWND hWnd)
 {
