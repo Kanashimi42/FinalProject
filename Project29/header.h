@@ -1,14 +1,17 @@
 #pragma once
-#include <functional>
 
-#include<windows.h>
-#include <Shlobj.h>
+#include <functional>
+#include <fstream>
+#include <iostream>
 #include <sstream>
+#include <string>
+#include <thread>
+#include <vector>
+#include <algorithm>
+#include <windows.h>
+#include <Shlobj.h>
 #include <windowsX.h>
 #include <tchar.h>
-#include <string>
-#include <fstream>
-#include <vector>
-#include"resource.h"
+#include "resource.h"
 
 using namespace std;
