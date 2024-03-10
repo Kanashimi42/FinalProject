@@ -25,8 +25,6 @@ public:
 	void FindFilesInDirectory(const string& directory, vector<string>& fileList);
 	void ChangeSearchDirectory(HWND hWnd);
 	void DeleteSelectedCensorWord(HWND hWnd);
-
-	/*void Cls_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify);*/
 	void StartSearch(HWND hWnd);
 	void StopSearch();
 	void ScanFilesAndReplace(const string& filePath, const string& censorDir, HWND hwnd);

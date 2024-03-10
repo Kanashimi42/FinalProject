@@ -5,7 +5,6 @@ INT_PTR CALLBACK ReportDlg::DlgProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM 
 	switch (uMsg)
 	{
 	case WM_INITDIALOG:
-		// Инициализация диалога...
 		return TRUE;
 	case WM_COMMAND:
 		switch (LOWORD(wParam))

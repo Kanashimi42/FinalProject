@@ -83,12 +83,9 @@ BOOL CCensurDlg::DlgProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	}
 	break;
 
-	case WM_APP: // Добавляем обработку сообщения WM_APP
+	case WM_APP:
 	{
 		LPCTSTR newWord = reinterpret_cast<LPCTSTR>(wParam);
-		// Ваш код для обработки нового слова
-		// Например, вы можете его отобразить в вашем диалоговом окне
-		// Например, если у вас есть элемент управления для отображения текста:
 		MessageBox(hWnd, newWord, L"Ошибка", MB_OK | MB_ICONERROR);
 		newWordSuper = _tcsdup(newWord);
 		return TRUE;
@@ -133,23 +130,22 @@ void CCensurDlg::StartSearch(HWND hWnd)
 	string filesDir = FILES_DIRECTORY;
 	string censorDir = CENSOR_FILE;
 
-	HWND hListBox = GetDlgItem(hWnd, IDC_LIST1); // Получить дескриптор ListBox
-	int index = SendMessage(hListBox, LB_GETCURSEL, 0, 0); // Получить индекс выбранного элемента
-	if (index != LB_ERR) // Если элемент выбран
+	HWND hListBox = GetDlgItem(hWnd, IDC_LIST1);
+	int index = SendMessage(hListBox, LB_GETCURSEL, 0, 0);
+	if (index != LB_ERR) 
 	{
 		TCHAR buffer[MAX_PATH];
-		SendMessage(hListBox, LB_GETTEXT, index, (LPARAM)buffer); // Получить текст выбранного элемента
-
+		SendMessage(hListBox, LB_GETTEXT, index, (LPARAM)buffer); 
 		TCHAR filename[MAX_PATH];
-		wcsncpy(filename, buffer, MAX_PATH); // Копировать текст в filename
-		filename[MAX_PATH - 1] = L'\0'; // Убедиться, что строка завершается нулевым символом
+		wcsncpy(filename, buffer, MAX_PATH);
+		filename[MAX_PATH - 1] = L'\0';
 		wstring wFilesDir(filesDir.begin(), filesDir.end());
 
-		MessageBox(NULL, filename, L"Сообщение", MB_OK); // Обратите внимание на использование L"..." для строк Unicode
+		MessageBox(NULL, filename, L"Сообщение", MB_OK);
 		wstring wFilePath = wFilesDir + L"//" + wstring(filename);
 		string filePath(wFilePath.begin(), wFilePath.end());
 
-		ScanFilesAndReplace(filePath, censorDir, hWnd); // Запустить сканирование и замену для выбранного файла
+		ScanFilesAndReplace(filePath, censorDir, hWnd); 
 	}
 	else
 	{
@@ -160,42 +156,29 @@ void CCensurDlg::StartSearch(HWND hWnd)
 
 void CCensurDlg::EditSelectedCensorWord(HWND hWnd, HWND hEditDlg)
 {
-	// Получить дескриптор списка IDC_LIST2
 	HWND hListBox2 = GetDlgItem(hWnd, IDC_LIST2);
-
-	// Получить индекс выбранного элемента в списке
 	int selectedIndex = SendMessage(hListBox2, LB_GETCURSEL, 0, 0);
 	if (selectedIndex != LB_ERR)
 	{
-		// Получить длину текста выбранного элемента
 		int textLength = SendMessage(hListBox2, LB_GETTEXTLEN, selectedIndex, 0);
 
-		// Выделить память для текста выбранного элемента
 		wchar_t* buffer = new wchar_t[textLength + 1];
 
-		// Получить текст выбранного элемента
 		SendMessage(hListBox2, LB_GETTEXT, selectedIndex, (LPARAM)buffer);
-		buffer[textLength] = L'\0'; // Добавить нулевой символ в конец строки
+		buffer[textLength] = L'\0';
 
-		// Передать выбранное слово в IDC_EDIT1 в окне EditDlg
 		HWND hEdit1 = GetDlgItem(hEditDlg, IDC_EDIT1);
 		SetWindowText(hEdit1, buffer);
 		int newWordLength = GetWindowTextLength(hEdit1);
 		wchar_t* newWord = new wchar_t[newWordLength + 1];
 		GetWindowText(hEdit1, newWord, newWordLength + 1);
-
-		// Получить путь к временному файлу
 		std::string tempFilePath = CENSOR_FILE + ".tmp";
-
-		// Открыть оригинальный файл с запрещенными словами для чтения
 		std::wifstream inFile(CENSOR_FILE);
 		if (!inFile.is_open())
 		{
 			MessageBox(hWnd, L"Ошибка открытия оригинального файла.", L"Ошибка", MB_OK | MB_ICONERROR);
 			return;
 		}
-
-		// Открыть временный файл для записи
 		std::wofstream outFile(tempFilePath);
 		if (!outFile.is_open())
 		{
@@ -203,11 +186,7 @@ void CCensurDlg::EditSelectedCensorWord(HWND hWnd, HWND hEditDlg)
 			inFile.close();
 			return;
 		}
-
-		// Переменная для хранения текущего слова из файла
 		std::wstring word;
-
-		// Копировать все слова из оригинального файла в временный файл, заменяя выбранное слово на новое
 		while (inFile >> word)
 		{
 			if (word == buffer)
@@ -216,30 +195,20 @@ void CCensurDlg::EditSelectedCensorWord(HWND hWnd, HWND hEditDlg)
 			}
 			outFile << word << std::endl;
 		}
-
-		// Закрыть файлы
 		inFile.close();
 		outFile.close();
-
-		// Удалить оригинальный файл
 		if (remove(CENSOR_FILE.c_str()) != 0)
 		{
 			MessageBox(hWnd, L"Ошибка удаления оригинального файла.", L"Ошибка", MB_OK | MB_ICONERROR);
 			return;
 		}
-
-		// Переименовать временный файл в оригинальный
 		if (rename(tempFilePath.c_str(), CENSOR_FILE.c_str()) != 0)
 		{
 			MessageBox(hWnd, L"Ошибка переименования временного файла.", L"Ошибка", MB_OK | MB_ICONERROR);
 			return;
 		}
-
-		// Освободить память для текста выбранного элемента
 		delete[] buffer;
 		delete[] newWord;
-
-		// Обновить список слов в листбоксе
 		LoadCensorWordsList(CENSOR_FILE, hWnd);
 	}
 }
@@ -247,68 +216,47 @@ void CCensurDlg::EditSelectedCensorWord(HWND hWnd, HWND hEditDlg)
 
 void CCensurDlg::DeleteSelectedCensorWord(HWND hWnd)
 {
-	// Получить дескриптор списка IDC_LIST2
 	HWND hListBox2 = GetDlgItem(hWnd, IDC_LIST2);
-
-	// Получить индекс выбранного элемента в списке
 	int selectedIndex = SendMessage(hListBox2, LB_GETCURSEL, 0, 0);
 	if (selectedIndex != LB_ERR)
 	{
-		// Получить длину текста выбранного элемента
 		int textLength = SendMessage(hListBox2, LB_GETTEXTLEN, selectedIndex, 0);
-
-		// Выделить память для текста выбранного элемента
 		wchar_t* buffer = new wchar_t[textLength + 1];
-
-		// Получить текст выбранного элемента
 		SendMessage(hListBox2, LB_GETTEXT, selectedIndex, (LPARAM)buffer);
-		buffer[textLength] = '\0'; // Добавить нулевой символ в конец строки
+		buffer[textLength] = '\0';
 		MessageBoxW(hWnd, buffer, L"Выбранный элемент", MB_OK | MB_ICONINFORMATION);
 
-		// Получить путь к временному файлу
 		std::string tempFilePath = CENSOR_FILE + ".tmp";
-
-		// Открыть оригинальный файл с запрещенными словами для чтения
 		std::wifstream inFile(CENSOR_FILE);
 
-		// Открыть временный файл для записи
 		std::wofstream outFile(tempFilePath);
-
-		// Переменная для хранения текущего слова из файла
 		std::wstring word;
 
-		// Копировать все слова из оригинального файла в временный файл, кроме выбранного
 		while (inFile >> word)
 		{
-			// Если текущее слово не совпадает с выбранным, записать его во временный файл
 			if (word != buffer)
 			{
 				outFile << word << std::endl;
 			}
 		}
 
-		// Закрыть файлы
 		inFile.close();
 		outFile.close();
 
-		// Удалить оригинальный файл
 		if (remove(CENSOR_FILE.c_str()) != 0)
 		{
 			MessageBox(hWnd, L"Ошибка удаления оригинального файла.", L"Ошибка", MB_OK | MB_ICONERROR);
 			return;
 		}
 
-		// Переименовать временный файл в оригинальный
 		if (rename(tempFilePath.c_str(), CENSOR_FILE.c_str()) != 0)
 		{
 			MessageBox(hWnd, L"Ошибка переименования временного файла.", L"Ошибка", MB_OK | MB_ICONERROR);
 			return;
 		}
 
-		// Освободить память для текста выбранного элемента
 		delete[] buffer;
 
-		// Обновить список слов в листбоксе
 		LoadCensorWordsList(CENSOR_FILE, hWnd);
 	}
 }
@@ -316,19 +264,16 @@ void CCensurDlg::DeleteSelectedCensorWord(HWND hWnd)
 
 void CCensurDlg::WriteReportToFile()
 {
-	// Открываем файл "report.txt" для записи
 	std::ofstream reportFile("report.txt");
 	if (!reportFile.is_open()) {
 		MessageBox(NULL, L"Не удалось создать файл отчета", L"Ошибка", MB_OK);
 		return;
 	}
 
-	// Проходим по вектору wordCount и записываем каждую пару в файл
 	for (const auto& pair : wordCount) {
 		reportFile << pair.first << " (" << pair.second << ")" << std::endl;
 	}
 
-	// Закрываем файл
 	reportFile.close();
 
 	MessageBox(NULL, L"Информация успешно записана в файл отчета", L"Успех", MB_OK);
@@ -338,16 +283,12 @@ void CCensurDlg::ScanAllFilesAndReplace(HWND hWnd)
 	string filesDir = FILES_DIRECTORY;
 	string censorDir = CENSOR_FILE;
 
-	// Получить список всех файлов в папке
 	vector<string> fileList;
 	FindFilesInDirectory(filesDir, fileList);
 
-	// Очистить счетчик слов перед началом сканирования всех файлов
 	wordCount.clear();
 
-	// Пройти по всем файлам и выполнить сканирование и изменение
 	for (const auto& file : fileList) {
-		// Сканировать и заменять в файле, а также обновить счетчик слов
 		ScanFilesAndReplace(file, censorDir, hWnd);
 	}
 }
@@ -371,24 +312,16 @@ void CCensurDlg::ChangeCensorFile(HWND hWnd)
 	if (GetOpenFileName(&ofn) == TRUE)
 	{
 
-		// Очистить список IDC_LIST2
 		HWND hListBox2 = GetDlgItem(hWnd, IDC_LIST2);
 		if (hListBox2)
 		{
 			SendMessage(hListBox2, LB_RESETCONTENT, 0, 0);
 		}
-		// Преобразование TCHAR в std::wstring
 		std::wstring wFilePath(szFile);
 
-		// Преобразование std::wstring в std::string
 		std::string filePath(wFilePath.begin(), wFilePath.end());
 
-
-
-		// Обновить переменную CENSOR_FILE
 		CENSOR_FILE = filePath;
-
-		// Загрузить слова из нового файла
 		LoadCensorWordsList(CENSOR_FILE, hWnd);
 	}
 }
@@ -418,32 +351,23 @@ void CCensurDlg::ChangeSearchDirectory(HWND hWnd)
 	BROWSEINFO browseInfo = { 0 };
 	browseInfo.lpszTitle = L"Выберите папку для поиска файлов";
 	LPITEMIDLIST pidl = SHBrowseForFolder(&browseInfo);
-	wchar_t selectedDir[MAX_PATH]; // Изменение типа на wchar_t
+	wchar_t selectedDir[MAX_PATH];
 	if (pidl != NULL) {
 		SHGetPathFromIDList(pidl, selectedDir);
 
-		// Преобразование wchar_t в std::wstring
 		std::wstring wSelectedDir(selectedDir);
-
-		// Преобразование std::wstring в std::string
 		std::string selectedDirStr(wSelectedDir.begin(), wSelectedDir.end());
-		// Очистить список IDC_List1
 		HWND hListBox = GetDlgItem(hWnd, IDC_LIST1);
 		if (hListBox)
 		{
 			SendMessage(hListBox, LB_RESETCONTENT, 0, 0);
 		}
-		// Обновить список файлов в ListBox и очистить прогресс-бар
 		LoadFilesList(selectedDirStr, hWnd);
 		HWND hProgressBar = GetDlgItem(hWnd, IDC_PROGRESS1);
 		if (hProgressBar)
 		{
 			SendMessage(hProgressBar, PBM_SETPOS, 0, 0);
 		}
-
-
-
-		// Обновить значение переменной FILES_DIRECTORY
 		FILES_DIRECTORY = selectedDirStr;
 	}
 }
@@ -455,11 +379,7 @@ void CCensurDlg::LoadCensorWordsList(const string& censorDir, HWND hWnd)
 	string censorFile = CENSOR_FILE;
 	ifstream file(censorFile);
 	string word;
-
-	// Получить дескриптор списка IDC_LIST2
 	HWND hListBox2 = GetDlgItem(hWnd, IDC_LIST2);
-
-	// Очистить список
 	SendMessage(hListBox2, LB_RESETCONTENT, 0, 0);
 
 	if (file.is_open())
@@ -610,7 +530,6 @@ void CCensurDlg::ScanFileForCensorWords(const string& filePath, const string& ce
 				while (censorFile >> censorWord)
 				{
 					censorWords.push_back(censorWord);
-					// При добавлении слова в список слов также добавляем его в счетчик
 					wordCount.push_back({ censorWord, 0 });
 				}
 				censorFile.close();
@@ -629,7 +548,6 @@ void CCensurDlg::ScanFileForCensorWords(const string& filePath, const string& ce
 					size_t pos = line.find(censorWord);
 					while (pos != string::npos)
 					{
-						// Увеличить счетчик для слова
 						for (auto& pair : wordCount) {
 							if (pair.first == censorWord) {
 								pair.second++;
