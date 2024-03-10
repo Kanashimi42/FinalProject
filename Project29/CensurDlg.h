@@ -13,7 +13,7 @@ public:
 	int maxProgressValue;
 	void ChangeCensorFile(HWND hWnd);
 	void EditSelectedCensorWord(HWND hWnd, HWND hEditDlg);
-	
+	void WriteReportToFile();
 	int currentProgressValue;
 	void UpdateCensorFile(const wchar_t* newWord);
 	function<void(int)> onProgressUpdate;

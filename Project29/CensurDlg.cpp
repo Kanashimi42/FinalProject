@@ -70,6 +70,7 @@ BOOL CCensurDlg::DlgProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		case IDC_BUTTON8:
 			DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG2), hWnd, (DLGPROC)ReportDlg::DlgProc);
 			hEditDlg = CreateDialog(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_DIALOG2), hWnd, (DLGPROC)ReportDlg::DlgProc);
+			ptr->WriteReportToFile();
 			return TRUE;
 			break;
 		case IDC_BUTTON9:
@@ -313,7 +314,25 @@ void CCensurDlg::DeleteSelectedCensorWord(HWND hWnd)
 }
 
 
+void CCensurDlg::WriteReportToFile()
+{
+	// Открываем файл "report.txt" для записи
+	std::ofstream reportFile("report.txt");
+	if (!reportFile.is_open()) {
+		MessageBox(NULL, L"Не удалось создать файл отчета", L"Ошибка", MB_OK);
+		return;
+	}
 
+	// Проходим по вектору wordCount и записываем каждую пару в файл
+	for (const auto& pair : wordCount) {
+		reportFile << pair.first << " (" << pair.second << ")" << std::endl;
+	}
+
+	// Закрываем файл
+	reportFile.close();
+
+	MessageBox(NULL, L"Информация успешно записана в файл отчета", L"Успех", MB_OK);
+}
 void CCensurDlg::ScanAllFilesAndReplace(HWND hWnd)
 {
 	string filesDir = FILES_DIRECTORY;
@@ -329,7 +348,7 @@ void CCensurDlg::ScanAllFilesAndReplace(HWND hWnd)
 	// Пройти по всем файлам и выполнить сканирование и изменение
 	for (const auto& file : fileList) {
 		// Сканировать и заменять в файле, а также обновить счетчик слов
-		ScanFilesAndReplaceAndUpdateCounter(file, censorDir, hWnd);
+		ScanFilesAndReplace(file, censorDir, hWnd);
 	}
 }
 
@@ -591,6 +610,8 @@ void CCensurDlg::ScanFileForCensorWords(const string& filePath, const string& ce
 				while (censorFile >> censorWord)
 				{
 					censorWords.push_back(censorWord);
+					// При добавлении слова в список слов также добавляем его в счетчик
+					wordCount.push_back({ censorWord, 0 });
 				}
 				censorFile.close();
 			}
@@ -608,6 +629,13 @@ void CCensurDlg::ScanFileForCensorWords(const string& filePath, const string& ce
 					size_t pos = line.find(censorWord);
 					while (pos != string::npos)
 					{
+						// Увеличить счетчик для слова
+						for (auto& pair : wordCount) {
+							if (pair.first == censorWord) {
+								pair.second++;
+								break;
+							}
+						}
 						line.replace(pos, censorWord.length(), "***");
 						pos = line.find(censorWord, pos + 3);
 					}
