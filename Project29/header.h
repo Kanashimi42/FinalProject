@@ -3,7 +3,7 @@
 
 #include<windows.h>
 #include <Shlobj.h>
-
+#include <sstream>
 #include <windowsX.h>
 #include <tchar.h>
 #include <string>

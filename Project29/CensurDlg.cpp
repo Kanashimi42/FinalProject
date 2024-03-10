@@ -3,12 +3,24 @@
 #include <string>
 #include <fstream>
 #include <thread>
+
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <algorithm>
+
 #undef MAX_PATH
 #define MAX_PATH 512
 #include <Commctrl.h>
 #define MAX_LOADSTRING 100
 CCensurDlg* CCensurDlg::ptr = NULL;
 bool CCensurDlg::stopScan = false;
+
+std::string FILES_DIRECTORY = "C:\\Users\\Kanashimi\\source\\repos\\Project29\\Project29\\Files\\";
+
+
+std::string CENSOR_FILE = "C:\\Users\\Kanashimi\\source\\repos\\Project29\\Project29\\Censor list\\Censor.txt";
+
 
 CCensurDlg::CCensurDlg(void)
 {
@@ -31,11 +43,17 @@ BOOL CCensurDlg::DlgProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		int wmId = LOWORD(wParam);
 		switch (wmId)
 		{
+		case IDC_BUTTON3:
+			ptr->DeleteSelectedCensorWord(hWnd);
+			break;
 		case IDC_BUTTON4:
 			ptr->StartSearch(hWnd);
 			break;
 		case IDC_BUTTON5:
 			ptr->ChangeSearchDirectory(hWnd);
+			break;
+		case IDC_BUTTON6:
+			ptr->ChangeCensorFile(hWnd);
 			break;
 		case IDC_BUTTON7:
 			ptr->StopSearch();
@@ -67,8 +85,8 @@ void CCensurDlg::Cls_OnClose(HWND hwnd)
 
 BOOL CCensurDlg::Cls_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 {
-	LoadFilesList("Files", hwnd);
-	LoadCensorWordsList("Censor list", hwnd);
+	LoadFilesList(FILES_DIRECTORY, hwnd);
+	LoadCensorWordsList(CENSOR_FILE, hwnd);
 	onProgressUpdate = [=](int progress) {
 		HWND hProgressBar = GetDlgItem(hwnd, IDC_PROGRESS1);
 		if (hProgressBar)
@@ -81,46 +99,12 @@ BOOL CCensurDlg::Cls_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 }
 
 
-
-
-//void CCensurDlg::Cls_OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
-//{
-//	switch (id)
-//	{
-//	case IDC_BUTTON4: // Кнопка "Start Search"
-//	{
-//		HWND hListBox = GetDlgItem(hwnd, IDC_LIST1); // Получить дескриптор ListBox
-//		int index = SendMessage(hListBox, LB_GETCURSEL, 0, 0); // Получить индекс выбранного элемента
-//		if (index != LB_ERR) // Если элемент выбран
-//		{
-//			char filename[MAX_PATH];
-//
-//			SendMessage(hListBox, LB_GETTEXT, index, (LPARAM)filename); // Получить текст выбранного элемента
-//			string filePath = "Files\\" + string(filename) + ".txt";
-//
-//			string censorDir = "Censor list\\Censor.txt";
-//
-//			ScanFilesAndReplace(filePath, censorDir, hwnd);
-//		}
-//		else
-//		{
-//			MessageBox(NULL, L"Пожалуйста, выберите файл из списка.", L"Сообщение", MB_OK);
-//		}
-//		break;
-//	}
-//	case IDC_BUTTON7:
-//		StopSearch();
-//		break;
-//	}
-//}
-
-
 void CCensurDlg::StartSearch(HWND hWnd)
 {
 	stopScan = false;
 
-	string filesDir = "Files\\";
-	string censorDir = "C:\\Users\\Kanashimi\\source\\repos\\Project29\\Project29\\Censor list\\Censor.txt";
+	string filesDir = FILES_DIRECTORY;
+	string censorDir = CENSOR_FILE;
 
 	HWND hListBox = GetDlgItem(hWnd, IDC_LIST1); // Получить дескриптор ListBox
 	int index = SendMessage(hListBox, LB_GETCURSEL, 0, 0); // Получить индекс выбранного элемента
@@ -132,11 +116,10 @@ void CCensurDlg::StartSearch(HWND hWnd)
 		TCHAR filename[MAX_PATH];
 		wcsncpy(filename, buffer, MAX_PATH); // Копировать текст в filename
 		filename[MAX_PATH - 1] = L'\0'; // Убедиться, что строка завершается нулевым символом
+		wstring wFilesDir(filesDir.begin(), filesDir.end());
 
 		MessageBox(NULL, filename, L"Сообщение", MB_OK); // Обратите внимание на использование L"..." для строк Unicode
-		wstring wFilePath = L"Files\\" + wstring(filename); // Используйте wstring для работы с широкими строками
-
-		// Преобразовать wstring в string
+		wstring wFilePath = wFilesDir + L"//" + wstring(filename);
 		string filePath(wFilePath.begin(), wFilePath.end());
 
 		ScanFilesAndReplace(filePath, censorDir, hWnd); // Запустить сканирование и замену для выбранного файла
@@ -148,10 +131,24 @@ void CCensurDlg::StartSearch(HWND hWnd)
 }
 
 
+
+void CCensurDlg::DeleteSelectedCensorWord(HWND hWnd)
+{
+	// Получить дескриптор списка IDC_LIST2
+	HWND hListBox2 = GetDlgItem(hWnd, IDC_LIST2);
+
+	// Получить индекс выбранного элемента в списке
+	int selectedIndex = SendMessage(hListBox2, LB_GETCURSEL, 0, 0);
+	if (selectedIndex != LB_ERR)
+	{
+		// Удалить выбранный элемент из списка
+		SendMessage(hListBox2, LB_DELETESTRING, selectedIndex, 0);
+	}
+}
 void CCensurDlg::ScanAllFilesAndReplace(HWND hWnd)
 {
-	string filesDir = "Files\\";
-	string censorDir = "C:\\Users\\Kanashimi\\source\\repos\\Project29\\Project29\\Censor list\\Censor.txt";
+	string filesDir = FILES_DIRECTORY;
+	string censorDir = CENSOR_FILE;
 
 	// Получить список всех файлов в папке
 	vector<string> fileList;
@@ -163,7 +160,45 @@ void CCensurDlg::ScanAllFilesAndReplace(HWND hWnd)
 	}
 }
 
+void CCensurDlg::ChangeCensorFile(HWND hWnd)
+{
+	OPENFILENAME ofn;
+	TCHAR szFile[MAX_PATH] = { 0 };
 
+	ZeroMemory(&ofn, sizeof(ofn));
+
+	ofn.lStructSize = sizeof(ofn);
+	ofn.hwndOwner = hWnd;
+	ofn.lpstrFilter = _T("Text Files (*.txt)\0*.txt\0All Files (*.*)\0*.*\0");
+	ofn.lpstrFile = szFile;
+	ofn.lpstrFile[0] = '\0';
+	ofn.nMaxFile = sizeof(szFile);
+	ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
+
+	if (GetOpenFileName(&ofn) == TRUE)
+	{
+
+		// Очистить список IDC_LIST2
+		HWND hListBox2 = GetDlgItem(hWnd, IDC_LIST2);
+		if (hListBox2)
+		{
+			SendMessage(hListBox2, LB_RESETCONTENT, 0, 0);
+		}
+		// Преобразование TCHAR в std::wstring
+		std::wstring wFilePath(szFile);
+
+		// Преобразование std::wstring в std::string
+		std::string filePath(wFilePath.begin(), wFilePath.end());
+
+
+
+		// Обновить переменную CENSOR_FILE
+		CENSOR_FILE = filePath;
+
+		// Загрузить слова из нового файла
+		LoadCensorWordsList(CENSOR_FILE, hWnd);
+	}
+}
 
 void CCensurDlg::FindFilesInDirectory(const string& directory, vector<string>& fileList)
 {
@@ -199,7 +234,12 @@ void CCensurDlg::ChangeSearchDirectory(HWND hWnd)
 
 		// Преобразование std::wstring в std::string
 		std::string selectedDirStr(wSelectedDir.begin(), wSelectedDir.end());
-
+		// Очистить список IDC_List1
+		HWND hListBox = GetDlgItem(hWnd, IDC_LIST1);
+		if (hListBox)
+		{
+			SendMessage(hListBox, LB_RESETCONTENT, 0, 0);
+		}
 		// Обновить список файлов в ListBox и очистить прогресс-бар
 		LoadFilesList(selectedDirStr, hWnd);
 		HWND hProgressBar = GetDlgItem(hWnd, IDC_PROGRESS1);
@@ -207,6 +247,11 @@ void CCensurDlg::ChangeSearchDirectory(HWND hWnd)
 		{
 			SendMessage(hProgressBar, PBM_SETPOS, 0, 0);
 		}
+
+
+
+		// Обновить значение переменной FILES_DIRECTORY
+		FILES_DIRECTORY = selectedDirStr;
 	}
 }
 
@@ -214,7 +259,7 @@ void CCensurDlg::ChangeSearchDirectory(HWND hWnd)
 
 void CCensurDlg::LoadCensorWordsList(const string& censorDir, HWND hWnd)
 {
-	string censorFile = "C:\\Users\\Kanashimi\\source\\repos\\Project29\\Project29\\Censor list\\Censor.txt";
+	string censorFile = CENSOR_FILE;
 	ifstream file(censorFile);
 	string word;
 
@@ -370,7 +415,7 @@ void CCensurDlg::ScanFileForCensorWords(const string& filePath, const string& ce
 			}
 
 			int totalLines = count(istreambuf_iterator<char>(file), istreambuf_iterator<char>(), '\n');
-			file.clear(); 
+			file.clear();
 			file.seekg(0, ios::beg);
 
 			int currentLine = 0;
@@ -412,7 +457,7 @@ void CCensurDlg::ScanFileForCensorWords(const string& filePath, const string& ce
 		{
 			MessageBox(NULL, L"Не удалось открыть файл", L"Ошибка", MB_OK);
 		}
-		
+
 		});
 	scanThread.detach();
 }
